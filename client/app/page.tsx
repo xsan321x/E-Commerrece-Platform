@@ -20,6 +20,8 @@ export default function HomePage() {
     },
     staleTime: 10 * 60 * 1000, // 10 minutes
     gcTime: 15 * 60 * 1000, // 15 minutes
+    enabled: typeof window !== 'undefined', // Only run on client-side
+    retry: false, // Don't retry on build
   });
 
   return (

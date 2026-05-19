@@ -70,6 +70,8 @@ export default function ProductsPage() {
     },
     staleTime: 3 * 60 * 1000, // 3 minutes
     gcTime: 5 * 60 * 1000, // 5 minutes
+    enabled: typeof window !== 'undefined', // Only run on client-side
+    retry: false, // Don't retry on build
   });
 
   const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
