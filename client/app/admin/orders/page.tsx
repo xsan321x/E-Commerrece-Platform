@@ -129,6 +129,21 @@ export default function ManageOrders() {
             <h1 className="text-3xl font-bold">Manage Orders</h1>
           </div>
 
+          {/* Debug Info */}
+          {process.env.NODE_ENV === 'development' && (
+            <Card className="mb-4 bg-blue-50 border-blue-200">
+              <CardContent className="p-4">
+                <p className="text-xs font-mono">
+                  <strong>Debug Info:</strong><br/>
+                  User: {user?.email} (Role: {user?.role})<br/>
+                  Query Status: {isLoading ? 'Loading' : error ? 'Error' : 'Success'}<br/>
+                  Orders Count: {orders?.length || 0}<br/>
+                  API URL: {process.env.NEXT_PUBLIC_API_URL}
+                </p>
+              </CardContent>
+            </Card>
+          )}
+
           <Card>
             <CardHeader>
               <CardTitle>All Orders ({orders?.length || 0})</CardTitle>
@@ -146,18 +161,32 @@ export default function ManageOrders() {
                   <p className="text-sm text-muted-foreground mb-4">
                     {error instanceof Error ? error.message : 'Failed to load orders'}
                   </p>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => queryClient.invalidateQueries({ queryKey: ['admin-orders'] })}
-                  >
-                    Retry
-                  </Button>
+                  <div className="space-y-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => queryClient.invalidateQueries({ queryKey: ['admin-orders'] })}
+                    >
+                      Retry
+                    </Button>
+                    <p className="text-xs text-muted-foreground mt-4">
+                      Troubleshooting tips:<br/>
+                      1. Make sure you're logged in as admin<br/>
+                      2. Check browser console (F12) for error details<br/>
+                      3. Try the test page: <a href="/test-orders" className="text-blue-600 underline">/test-orders</a>
+                    </p>
+                  </div>
                 </div>
-              ) : orders && orders.length === 0 ? (
+              ) : !orders || orders.length === 0 ? (
                 <div className="text-center py-8">
                   <Package className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                  <p className="text-muted-foreground">No orders found</p>
+                  <p className="font-semibold mb-2">No orders found</p>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    There are no orders in the system yet.
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Orders will appear here once customers place orders.
+                  </p>
                 </div>
               ) : (
                 <div className="space-y-4">
