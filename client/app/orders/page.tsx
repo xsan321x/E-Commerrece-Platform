@@ -108,6 +108,7 @@ export default function OrdersPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const user = useAuthStore((state) => state.user);
+  const [isHydrated, setIsHydrated] = useState(false);
   const [reviewDialog, setReviewDialog] = useState<{
     open: boolean;
     productId: string;
@@ -116,13 +117,21 @@ export default function OrdersPage() {
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState('');
 
+  // Wait for Zustand to rehydrate from localStorage
   useEffect(() => {
+    setIsHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    // Only redirect after hydration is complete
+    if (!isHydrated) return;
+    
     console.log('[Orders Page] useEffect triggered, user:', user ? `${user.name} (${user.email})` : 'null');
     if (!user) {
       console.log('[Orders Page] No user found, redirecting to login');
       router.push('/login');
     }
-  }, [user, router]);
+  }, [user, router, isHydrated]);
 
   const { data: orders, isLoading, error } = useQuery({
     queryKey: ['my-orders'],
@@ -213,8 +222,8 @@ export default function OrdersPage() {
     });
   };
 
-  if (!user) {
-    console.log('[Orders Page] Rendering null (no user)');
+  if (!isHydrated || !user) {
+    console.log('[Orders Page] Rendering null (no user or not hydrated)');
     return null;
   }
 

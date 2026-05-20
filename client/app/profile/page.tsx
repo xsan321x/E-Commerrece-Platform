@@ -32,14 +32,23 @@ type ProfileForm = z.infer<typeof profileSchema>;
 export default function ProfilePage() {
   const router = useRouter();
   const { user, updateUser } = useAuthStore();
+  const [isHydrated, setIsHydrated] = useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [avatarPreview, setAvatarPreview] = useState(user?.avatar || '');
 
+  // Wait for Zustand to rehydrate from localStorage
   useEffect(() => {
+    setIsHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    // Only redirect after hydration is complete
+    if (!isHydrated) return;
+    
     if (!user) {
       router.push('/login');
     }
-  }, [user, router]);
+  }, [user, router, isHydrated]);
 
   const {
     register,
@@ -122,7 +131,7 @@ export default function ProfilePage() {
     }
   };
 
-  if (!user) {
+  if (!isHydrated || !user) {
     return null;
   }
 

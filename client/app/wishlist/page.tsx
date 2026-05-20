@@ -23,7 +23,13 @@ export default function WishlistPage() {
   const addItem = useCartStore((state) => state.addItem);
   const queryClient = useQueryClient();
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [isHydrated, setIsHydrated] = useState(false);
   const [isRedirecting, setIsRedirecting] = useState(false);
+
+  // Wait for Zustand to rehydrate from localStorage
+  useEffect(() => {
+    setIsHydrated(true);
+  }, []);
 
   const { data: wishlist, isLoading } = useQuery({
     queryKey: ['wishlist'],
@@ -38,7 +44,7 @@ export default function WishlistPage() {
       return wishlistData;
     },
     staleTime: 2 * 60 * 1000, // 2 minutes
-    enabled: !!user, // Only run query if user exists
+    enabled: !!(user && isHydrated), // Only run query if user exists and hydrated
     initialData: { products: [] }, // Provide initial data to prevent undefined
   });
 
@@ -59,11 +65,14 @@ export default function WishlistPage() {
   });
 
   useEffect(() => {
+    // Only redirect after hydration is complete
+    if (!isHydrated) return;
+    
     if (!user && !isRedirecting) {
       setIsRedirecting(true);
       router.push('/login');
     }
-  }, [user, router, isRedirecting]);
+  }, [user, router, isRedirecting, isHydrated]);
 
   const handleAddToCart = (product: any) => {
     addItem(product);
@@ -75,7 +84,7 @@ export default function WishlistPage() {
   };
 
   // Return null AFTER all hooks
-  if (!user) {
+  if (!isHydrated || !user) {
     return null;
   }
 
