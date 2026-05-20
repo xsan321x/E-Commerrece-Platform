@@ -15,44 +15,47 @@ import { Button } from '@/components/ui/button';
 export default function AdminDashboard() {
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
+  const [isHydrated, setIsHydrated] = useState(false);
   const [isRedirecting, setIsRedirecting] = useState(false);
 
   console.log('[Admin Dashboard] Component rendered, user:', user ? `${user.name} (role: ${user.role})` : 'null');
 
+  // Wait for Zustand to rehydrate from localStorage
+  useEffect(() => {
+    setIsHydrated(true);
+  }, []);
+
   const { data: products } = useQuery({
     queryKey: ['admin-products'],
     queryFn: async () => {
-      if (!user || user.role !== 'admin') return []; // Return empty array if not admin
       const response = await api.get('/products');
       return response.data.data.products || [];
     },
-    enabled: !!(user && user.role === 'admin'),
-    initialData: [], // Provide initial data to prevent undefined
+    enabled: !!(user && user.role === 'admin' && isHydrated && typeof window !== 'undefined'),
   });
 
   const { data: orders } = useQuery({
     queryKey: ['admin-orders'],
     queryFn: async () => {
-      if (!user || user.role !== 'admin') return []; // Return empty array if not admin
       const response = await api.get('/orders/all');
       return response.data.data.orders || [];
     },
-    enabled: !!(user && user.role === 'admin'),
-    initialData: [], // Provide initial data to prevent undefined
+    enabled: !!(user && user.role === 'admin' && isHydrated && typeof window !== 'undefined'),
   });
 
   const { data: users } = useQuery({
     queryKey: ['admin-users'],
     queryFn: async () => {
-      if (!user || user.role !== 'admin') return []; // Return empty array if not admin
       const response = await api.get('/users');
       return response.data.data.users || [];
     },
-    enabled: !!(user && user.role === 'admin'),
-    initialData: [], // Provide initial data to prevent undefined
+    enabled: !!(user && user.role === 'admin' && isHydrated && typeof window !== 'undefined'),
   });
 
   useEffect(() => {
+    // Only redirect after hydration is complete
+    if (!isHydrated) return;
+    
     console.log('[Admin Dashboard] useEffect triggered, user:', user ? `${user.name} (role: ${user.role})` : 'null');
     if ((!user || user.role !== 'admin') && !isRedirecting) {
       console.log('[Admin Dashboard] Redirecting to home');
@@ -61,10 +64,11 @@ export default function AdminDashboard() {
     } else if (user && user.role === 'admin') {
       console.log('[Admin Dashboard] User is admin, staying on page');
     }
-  }, [user, router, isRedirecting]);
+  }, [user, router, isRedirecting, isHydrated]);
 
   const totalRevenue = orders?.reduce((sum: number, order: any) => {
-    return order.paymentStatus === 'paid' ? sum + order.totalAmount : sum;
+    // Count all orders except cancelled ones
+    return order.orderStatus !== 'cancelled' ? sum + order.totalAmount : sum;
   }, 0) || 0;
 
   const stats = [
@@ -98,8 +102,20 @@ export default function AdminDashboard() {
     },
   ];
 
-  if (!user || user.role !== 'admin') {
-    return null;
+  if (!isHydrated || !user || user.role !== 'admin') {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navbar />
+        <div className="container py-8">
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+              <p className="text-muted-foreground">Loading...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
