@@ -16,6 +16,10 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Trust proxy - Required for Vercel deployment
+// This allows Express to trust the X-Forwarded-* headers from Vercel's proxy
+app.set('trust proxy', 1);
+
 // Connect to MongoDB (non-blocking)
 connectDB().catch(err => {
   console.log('⚠️  Running in DEMO MODE with mock data');
