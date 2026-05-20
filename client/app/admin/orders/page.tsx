@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Package } from 'lucide-react';
+import { ArrowLeft, Package, XCircle } from 'lucide-react';
 import api from '@/lib/api';
 import { useAuthStore } from '@/lib/store/authStore';
 import { Navbar } from '@/components/Navbar';
@@ -31,17 +31,31 @@ export default function ManageOrders() {
   const { data: orders, isLoading, error } = useQuery({
     queryKey: ['admin-orders'],
     queryFn: async () => {
-      if (!user || user.role !== 'admin') return []; // Return empty array if not admin
-      console.log('[Admin Orders] Fetching all orders...');
-      const response = await api.get('/orders/all');
-      console.log('[Admin Orders] Orders fetched successfully:', response.data.data.orders.length, 'orders');
-      return response.data.data.orders || [];
+      if (!user || user.role !== 'admin') {
+        console.log('[Admin Orders] Not admin, returning empty array');
+        return [];
+      }
+      try {
+        console.log('[Admin Orders] Fetching all orders...');
+        const response = await api.get('/orders/all');
+        console.log('[Admin Orders] Raw response:', response);
+        console.log('[Admin Orders] Response data:', response.data);
+        
+        const orders = response.data?.data?.orders || [];
+        console.log('[Admin Orders] Orders fetched successfully:', orders.length, 'orders');
+        console.log('[Admin Orders] Orders:', orders);
+        return orders;
+      } catch (error: any) {
+        console.error('[Admin Orders] Error fetching orders:', error);
+        console.error('[Admin Orders] Error response:', error.response);
+        console.error('[Admin Orders] Error message:', error.message);
+        throw error;
+      }
     },
-    retry: 1, // Retry once on failure
-    refetchOnMount: true, // Always refetch when component mounts
-    staleTime: 30 * 1000, // Consider data stale after 30 seconds
-    enabled: !!(user && user.role === 'admin'),
-    initialData: [], // Provide initial data to prevent undefined
+    retry: 1,
+    refetchOnMount: 'always',
+    staleTime: 0, // Always fetch fresh data
+    enabled: !!(user && user.role === 'admin' && typeof window !== 'undefined'),
   });
 
   const updateStatusMutation = useMutation({
@@ -121,7 +135,30 @@ export default function ManageOrders() {
             </CardHeader>
             <CardContent>
               {isLoading ? (
-                <div className="text-center py-8">Loading...</div>
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+                  <p className="text-muted-foreground">Loading orders...</p>
+                </div>
+              ) : error ? (
+                <div className="text-center py-8">
+                  <XCircle className="h-12 w-12 mx-auto mb-4 text-red-500" />
+                  <p className="text-red-700 font-semibold mb-2">Error Loading Orders</p>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    {error instanceof Error ? error.message : 'Failed to load orders'}
+                  </p>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => queryClient.invalidateQueries({ queryKey: ['admin-orders'] })}
+                  >
+                    Retry
+                  </Button>
+                </div>
+              ) : orders && orders.length === 0 ? (
+                <div className="text-center py-8">
+                  <Package className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                  <p className="text-muted-foreground">No orders found</p>
+                </div>
               ) : (
                 <div className="space-y-4">
                   {orders?.map((order: any) => (

@@ -127,17 +127,31 @@ export default function OrdersPage() {
   const { data: orders, isLoading, error } = useQuery({
     queryKey: ['my-orders'],
     queryFn: async () => {
-      if (!user) return []; // Return empty array if no user
-      console.log('[Orders Page] Fetching orders...');
-      const response = await api.get('/orders/myorders');
-      console.log('[Orders Page] Orders fetched successfully:', response.data.data.orders.length, 'orders');
-      return response.data.data.orders as Order[];
+      if (!user) {
+        console.log('[Orders Page] No user, returning empty array');
+        return [];
+      }
+      try {
+        console.log('[Orders Page] Fetching orders for user:', user.email);
+        const response = await api.get('/orders/myorders');
+        console.log('[Orders Page] Raw response:', response);
+        console.log('[Orders Page] Response data:', response.data);
+        
+        const orders = response.data?.data?.orders || [];
+        console.log('[Orders Page] Orders fetched successfully:', orders.length, 'orders');
+        console.log('[Orders Page] Orders:', orders);
+        return orders as Order[];
+      } catch (error: any) {
+        console.error('[Orders Page] Error fetching orders:', error);
+        console.error('[Orders Page] Error response:', error.response);
+        console.error('[Orders Page] Error message:', error.message);
+        throw error;
+      }
     },
-    enabled: !!user,
-    retry: 1, // Retry once on failure
-    refetchOnMount: true, // Always refetch when component mounts
-    staleTime: 30 * 1000, // Consider data stale after 30 seconds
-    initialData: [], // Provide initial data to prevent undefined
+    enabled: !!user && typeof window !== 'undefined',
+    retry: 1,
+    refetchOnMount: 'always',
+    staleTime: 0, // Always fetch fresh data
   });
 
   // Log any query errors
@@ -225,6 +239,19 @@ export default function OrdersPage() {
                 </Card>
               ))}
             </div>
+          ) : error ? (
+            <Card>
+              <CardContent className="p-12 text-center">
+                <XCircle className="h-16 w-16 mx-auto mb-4 text-red-500" />
+                <h3 className="text-xl font-semibold mb-2 text-red-700">Error Loading Orders</h3>
+                <p className="text-muted-foreground mb-6">
+                  {error instanceof Error ? error.message : 'Failed to load orders. Please try again.'}
+                </p>
+                <Button onClick={() => queryClient.invalidateQueries({ queryKey: ['my-orders'] })}>
+                  Retry
+                </Button>
+              </CardContent>
+            </Card>
           ) : orders && orders.length > 0 ? (
             <div className="space-y-4">
               {orders.map((order) => {
