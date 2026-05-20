@@ -54,6 +54,19 @@ export default function CheckoutPage() {
   const onSubmit = async (data: AddressForm) => {
     setIsLoading(true);
     try {
+      // Validate product IDs before sending
+      const invalidProducts = items.filter(item => {
+        const id = item.product._id;
+        // Check if it's a valid MongoDB ObjectId (24 hex characters)
+        return !id || typeof id !== 'string' || !/^[0-9a-fA-F]{24}$/.test(id);
+      });
+
+      if (invalidProducts.length > 0) {
+        toast.error('Some products in your cart are invalid. Please clear your cart and add products again.', { duration: 5000 });
+        console.error('Invalid product IDs:', invalidProducts.map(p => p.product._id));
+        return;
+      }
+
       const orderData = {
         products: items.map((item) => ({
           product: item.product._id,
@@ -74,6 +87,7 @@ export default function CheckoutPage() {
       toast.success('Order placed successfully!', { duration: 3000 });
       router.push('/orders');
     } catch (error: any) {
+      console.error('Checkout error:', error);
       toast.error(error.response?.data?.message || 'Failed to place order', { duration: 3000 });
     } finally {
       setIsLoading(false);

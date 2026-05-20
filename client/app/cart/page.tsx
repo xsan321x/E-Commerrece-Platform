@@ -1,10 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
-import { Trash2, Plus, Minus, ShoppingBag } from 'lucide-react';
+import { Trash2, Plus, Minus, ShoppingBag, AlertCircle } from 'lucide-react';
 import { useCartStore } from '@/lib/store/cartStore';
 import { useAuthStore } from '@/lib/store/authStore';
 import { Navbar } from '@/components/Navbar';
@@ -18,6 +18,23 @@ export default function CartPage() {
   const router = useRouter();
   const { items, updateQuantity, removeItem, getTotalPrice, clearCart } = useCartStore();
   const user = useAuthStore((state) => state.user);
+  const [hasInvalidProducts, setHasInvalidProducts] = useState(false);
+
+  // Check for invalid product IDs on mount
+  useEffect(() => {
+    const invalidProducts = items.filter(item => {
+      const id = item.product._id;
+      return !id || typeof id !== 'string' || !/^[0-9a-fA-F]{24}$/.test(id);
+    });
+
+    if (invalidProducts.length > 0) {
+      setHasInvalidProducts(true);
+      console.warn('Invalid products found in cart:', invalidProducts.map(p => ({
+        id: p.product._id,
+        title: p.product.title
+      })));
+    }
+  }, [items]);
 
   const handleCheckout = () => {
     if (!user) {
@@ -62,6 +79,38 @@ export default function CartPage() {
           animate={{ opacity: 1, y: 0 }}
         >
           <h1 className="text-4xl font-bold mb-8">Shopping Cart</h1>
+
+          {/* Invalid Products Warning */}
+          {hasInvalidProducts && (
+            <Card className="mb-6 border-yellow-500 bg-yellow-50">
+              <CardContent className="p-4">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="h-5 w-5 text-yellow-600 mt-0.5 flex-shrink-0" />
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-yellow-900 mb-1">
+                      Invalid Products Detected
+                    </h3>
+                    <p className="text-sm text-yellow-800 mb-3">
+                      Some products in your cart have invalid IDs and cannot be checked out. 
+                      This usually happens with old cached data. Please clear your cart and add products again from the products page.
+                    </p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        clearCart();
+                        toast.success('Cart cleared. Please add products again from the products page.', { duration: 4000 });
+                        setHasInvalidProducts(false);
+                      }}
+                      className="bg-yellow-100 hover:bg-yellow-200 border-yellow-600 text-yellow-900"
+                    >
+                      Clear Cart Now
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           <div className="grid lg:grid-cols-3 gap-8">
             {/* Cart Items */}
@@ -162,7 +211,12 @@ export default function CartPage() {
                   </div>
                 </CardContent>
                 <CardFooter className="flex-col gap-2">
-                  <Button className="w-full" size="lg" onClick={handleCheckout}>
+                  <Button 
+                    className="w-full" 
+                    size="lg" 
+                    onClick={handleCheckout}
+                    disabled={hasInvalidProducts}
+                  >
                     Proceed to Checkout
                   </Button>
                   <Button
@@ -171,6 +225,7 @@ export default function CartPage() {
                     onClick={() => {
                       clearCart();
                       toast.success('Cart cleared', { duration: 2000 });
+                      setHasInvalidProducts(false);
                     }}
                   >
                     Clear Cart

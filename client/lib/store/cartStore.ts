@@ -10,6 +10,8 @@ interface CartState {
   clearCart: () => void;
   getTotalItems: () => number;
   getTotalPrice: () => number;
+  validateAndCleanCart: () => number;
+  isValidProductId: (id: string) => boolean;
 }
 
 export const useCartStore = create<CartState>()(
@@ -55,6 +57,23 @@ export const useCartStore = create<CartState>()(
           (total, item) => total + item.product.price * item.quantity,
           0
         );
+      },
+      isValidProductId: (id: string) => {
+        // Check if it's a valid MongoDB ObjectId (24 hex characters)
+        return id && typeof id === 'string' && /^[0-9a-fA-F]{24}$/.test(id);
+      },
+      validateAndCleanCart: () => {
+        const items = get().items;
+        const invalidItems = items.filter(item => !get().isValidProductId(item.product._id));
+        
+        if (invalidItems.length > 0) {
+          // Remove invalid items
+          const validItems = items.filter(item => get().isValidProductId(item.product._id));
+          set({ items: validItems });
+          return invalidItems.length;
+        }
+        
+        return 0;
       },
     }),
     {
